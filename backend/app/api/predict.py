@@ -12,7 +12,7 @@ from app.schemas.prediction import PredictionRequest
 router = APIRouter()
 
 # Dynamically add AI_prediction/ai_insights to sys.path
-BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 AI_INSIGHTS_PATH = BASE_DIR / "AI_prediction" / "ai_insights"
 if str(AI_INSIGHTS_PATH) not in sys.path:
     sys.path.insert(0, str(AI_INSIGHTS_PATH))
@@ -146,4 +146,4 @@ def predict(data: PredictionRequest):
         "recommended_actions": recommended_actions,
         "prediction_summary": ai_results.get("prediction_summary", {})
     }
-
+
