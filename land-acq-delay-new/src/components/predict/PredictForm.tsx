@@ -3,7 +3,7 @@
 // Smart Executive Prediction Form with 4 Icon Sections & Dynamic State -> District Dropdown
 
 import { useState, useMemo } from "react";
-import { Loader2, Building2, PieChart, AlertTriangle, Sparkles, Scale, CheckCircle2 } from "lucide-react";
+import { Loader2, Building2, PieChart, AlertTriangle, Sparkles, Scale, CheckCircle2, SlidersHorizontal } from "lucide-react";
 import { predictRisk } from "@/services/predictionService";
 import { USE_MOCK } from "@/services/api";
 import { ALL_INDIAN_STATES, getDistrictsForState } from "@/data/districtData";
@@ -88,6 +88,66 @@ export default function PredictForm({ initialValues }: PredictFormProps = {}) {
   const [result, setResult] = useState<PredictionResponse | null>(null);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [serverError, setServerError] = useState<string | null>(null);
+  const [selectedScenario, setSelectedScenario] = useState("");
+
+  const SCENARIOS = [
+    {
+      id: "healthy",
+      label: "🟢 Healthy Project",
+      data: {
+        projectName: "NH-48 Nashik Bypass (Healthy Project)",
+        state: "Maharashtra",
+        district: "Nashik",
+        projectType: "Highway",
+        currentStage: "Compensation & Possession (Section 38)" as AcquisitionStage,
+        totalLandRequired: 120,
+        landAcquiredPercentage: 92,
+        compensationPendingPercentage: 8,
+        landPossessionPercentage: 88,
+        pendingApprovals: 0,
+        legalDisputes: 0,
+        affectedFamilies: 35,
+        rrCompletionPercentage: 95,
+        previousDelay: false,
+        environmentClearance: "Approved",
+        forestClearance: "Approved",
+      },
+    },
+    {
+      id: "high_risk",
+      label: "🔴 High-Risk Project",
+      data: {
+        projectName: "NH-48 Nashik Bypass Expansion",
+        state: "Maharashtra",
+        district: "Nashik",
+        projectType: "Highway",
+        currentStage: "Declaration (Section 19)" as AcquisitionStage,
+        totalLandRequired: 185,
+        landAcquiredPercentage: 42,
+        compensationPendingPercentage: 80,
+        landPossessionPercentage: 28,
+        pendingApprovals: 7,
+        legalDisputes: 6,
+        affectedFamilies: 420,
+        rrCompletionPercentage: 24,
+        previousDelay: true,
+        environmentClearance: "Pending",
+        forestClearance: "Pending",
+      },
+    },
+  ];
+
+  function handleScenarioChange(scenarioId: string) {
+    setSelectedScenario(scenarioId);
+    const found = SCENARIOS.find((s) => s.id === scenarioId);
+    if (found) {
+      setForm((f) => ({
+        ...f,
+        ...found.data,
+      }));
+      setFormErrors({});
+    }
+  }
 
   // Available districts based on selected state
   const availableDistricts = useMemo(() => {
@@ -124,6 +184,17 @@ export default function PredictForm({ initialValues }: PredictFormProps = {}) {
       return;
     }
     const val = parseInt(rawVal, 10);
+    if (isNaN(val)) return;
+    set(key, Math.max(0, val));
+  }
+
+  // Handle Float numbers helper
+  function handleFloatChange(key: keyof PredictionRequest, rawVal: string) {
+    if (rawVal === "") {
+      set(key, undefined);
+      return;
+    }
+    const val = parseFloat(rawVal);
     if (isNaN(val)) return;
     set(key, Math.max(0, val));
   }
@@ -193,6 +264,7 @@ export default function PredictForm({ initialValues }: PredictFormProps = {}) {
     setServerError(null);
     setFormErrors({});
     setStageStartDate("2026-08-10");
+    setSelectedScenario("");
     setForm({
       projectName: "",
       state: "Maharashtra",
@@ -313,7 +385,19 @@ export default function PredictForm({ initialValues }: PredictFormProps = {}) {
               </h3>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Field label="Total Land Required (ha)" hint="Total hectares required">
+                <input
+                  type="number"
+                  min={0}
+                  step="any"
+                  className={inputCls}
+                  placeholder="e.g. 75"
+                  value={form.totalLandRequired ?? ""}
+                  onChange={(e) => handleFloatChange("totalLandRequired", e.target.value)}
+                />
+              </Field>
+
               <Field label="Land Acquired (%)" hint="Range: 0% to 100%">
                 <input
                   type="number"
@@ -437,6 +521,95 @@ export default function PredictForm({ initialValues }: PredictFormProps = {}) {
                   onChange={(e) => setStageStartDate(e.target.value)}
                 />
               </Field>
+            </div>
+          </div>
+
+          {/* SECTION 4: ADVANCED PREDICTION PARAMETERS */}
+          <div className="space-y-4 pt-2">
+            <div className="flex items-center gap-2 border-b border-[#e6eaf0] pb-2">
+              <SlidersHorizontal size={18} className="text-[#2457d6]" />
+              <h3 className="text-[13px] font-extrabold text-[#172033] uppercase tracking-wider">
+                4. Advanced Prediction Parameters
+              </h3>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Field label="Affected Families" hint="Project affected families (PAFs)">
+                <input
+                  type="number"
+                  min={0}
+                  className={inputCls}
+                  placeholder="e.g. 50"
+                  value={form.affectedFamilies ?? ""}
+                  onChange={(e) => handleCountChange("affectedFamilies", e.target.value)}
+                />
+              </Field>
+
+              <Field label="R&R Completion (%)" hint="Range: 0% to 100%">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  className={inputCls}
+                  placeholder="e.g. 40"
+                  value={form.rrCompletionPercentage ?? ""}
+                  onChange={(e) => handlePercentageChange("rrCompletionPercentage", e.target.value)}
+                />
+              </Field>
+
+              <Field label="Previous Delay History" hint="Prior project delay record">
+                <div className="flex items-center gap-4 pt-2">
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-[#172033] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="previousDelay"
+                      checked={form.previousDelay === false}
+                      onChange={() => set("previousDelay", false)}
+                      className="text-[#2457d6] focus:ring-[#2457d6]"
+                    />
+                    No Previous Delay
+                  </label>
+                  <label className="flex items-center gap-1.5 text-[12px] font-medium text-[#172033] cursor-pointer">
+                    <input
+                      type="radio"
+                      name="previousDelay"
+                      checked={form.previousDelay === true}
+                      onChange={() => set("previousDelay", true)}
+                      className="text-[#2457d6] focus:ring-[#2457d6]"
+                    />
+                    Delayed Earlier
+                  </label>
+                </div>
+              </Field>
+            </div>
+          </div>
+
+          {/* PROJECT SCENARIO */}
+          <div className="pt-2">
+            <div className="p-4 bg-[#f8fafc] border border-[#e6eaf0] rounded-xl flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <h4 className="text-[13px] font-extrabold text-[#172033] flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-[#2457d6]" />
+                  Project Scenario
+                </h4>
+                <p className="text-[11px] text-[#687386] mt-0.5">
+                  Prefill the form with realistic project scenarios.
+                </p>
+              </div>
+              <div className="w-full sm:w-auto min-w-[280px]">
+                <select
+                  className={selectCls}
+                  value={selectedScenario}
+                  onChange={(e) => handleScenarioChange(e.target.value)}
+                >
+                  <option value="">Select Scenario...</option>
+                  {SCENARIOS.map((sc) => (
+                    <option key={sc.id} value={sc.id}>
+                      {sc.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>

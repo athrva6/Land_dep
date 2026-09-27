@@ -2,6 +2,9 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 
+ARG BACKEND_URL
+ENV BACKEND_URL=$BACKEND_URL
+
 COPY package*.json ./
 
 RUN npm ci
@@ -9,7 +12,6 @@ RUN npm ci
 COPY . .
 
 RUN npm run build
-
 
 FROM node:22-alpine
 
@@ -25,4 +27,3 @@ COPY --from=builder /app/public ./public
 EXPOSE 3000
 
 CMD ["npm", "start"]
-
